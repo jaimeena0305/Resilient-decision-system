@@ -1,0 +1,495 @@
+{
+  "_comment": "═══════════════════════════════════════════════════════════════════════",
+  "_comment2": "  DECISION EXPLANATION EXAMPLE — REJECTED LOAN APPLICATION",
+  "_comment3": "  This document shows a complete ExecutionResponse for a request that",
+  "_comment4": "  was REJECTED due to a failed mandatory credit score rule.",
+  "_comment5": "  Every field in 'audit_trail' is an immutable, append-only record.",
+  "_comment6": "═══════════════════════════════════════════════════════════════════════",
+
+  "id": "exec-f3a2b1c0-d4e5-6789-abcd-ef0123456789",
+  "request_id": "req-aa11bb22-cc33-dd44-ee55-ff6677889900",
+  "workflow_id": "loan_approval_v1",
+  "status": "REJECTED",
+  "current_stage": "rule_evaluation",
+
+  "input_payload": {
+    "applicant_id": "APP-002",
+    "full_name": "Bob Smith",
+    "age": 28,
+    "annual_income": 55000,
+    "requested_amount": 12000,
+    "employment_status": "employed",
+    "existing_debt": 3000
+  },
+
+  "context": {
+    "input": {
+      "applicant_id": "APP-002",
+      "full_name": "Bob Smith",
+      "age": 28,
+      "annual_income": 55000,
+      "requested_amount": 12000,
+      "employment_status": "employed",
+      "existing_debt": 3000
+    },
+    "context": {
+      "credit_score": 450
+    }
+  },
+
+  "decision_trace": {
+    "_comment": "─── TOP-LEVEL SUMMARY ───────────────────────────────────────────────",
+    "_comment2": "This block is the 'executive summary' of the decision.",
+    "_comment3": "A human reviewer or downstream system can read just this block",
+    "_comment4": "to understand WHY the decision was made, without reading audit logs.",
+
+    "final_status": "REJECTED",
+    "workflow_id": "loan_approval_v1",
+    "workflow_version": "1.0.0",
+    "total_stages": 3,
+    "stages_passed": 2,
+    "stages_failed": 1,
+
+    "mandatory_failures": [
+      "credit_score_minimum"
+    ],
+    "soft_failures": [],
+    "forced_reviews": [],
+
+    "summary": "Rejected: mandatory rule failure(s) in: ['credit_score_minimum'].",
+
+    "rule_trace": [
+      {
+        "_comment": "Stage 1 rules — all passed",
+        "rule_id": "age_eligibility",
+        "stage_id": "validate_input",
+        "field_path": "input.age",
+        "evaluated_value": "28",
+        "expected_value": "18",
+        "operator": "gte",
+        "result": "PASS",
+        "reason": "[PASSED] Applicant must be at least 18 years old: 'input.age' = 28 gte 18"
+      },
+      {
+        "rule_id": "minimum_income",
+        "stage_id": "validate_input",
+        "field_path": "input.annual_income",
+        "evaluated_value": "55000",
+        "expected_value": "30000",
+        "operator": "gte",
+        "result": "PASS",
+        "reason": "[PASSED] Annual income must meet minimum threshold of $30,000: 'input.annual_income' = 55000 gte 30000"
+      },
+      {
+        "rule_id": "employment_check",
+        "stage_id": "validate_input",
+        "field_path": "input.employment_status",
+        "evaluated_value": "employed",
+        "expected_value": "['unemployed']",
+        "operator": "not_in",
+        "result": "PASS",
+        "reason": "[PASSED] Unemployed applicants require manual review: 'input.employment_status' = 'employed' not_in ['unemployed']"
+      },
+      {
+        "_comment": "Stage 3 rules — CRITICAL FAILURE HERE",
+        "rule_id": "credit_score_minimum",
+        "stage_id": "rule_evaluation",
+        "field_path": "context.credit_score",
+        "evaluated_value": "450",
+        "expected_value": "650",
+        "operator": "gte",
+        "result": "FAIL",
+        "reason": "[FAILED] Credit score must be at least 650 for auto-approval: 'context.credit_score' = 450 gte 650 → HARD REJECT (mandatory failure)"
+      },
+      {
+        "rule_id": "debt_to_income_ratio",
+        "stage_id": "rule_evaluation",
+        "field_path": "input.existing_debt / input.annual_income",
+        "evaluated_value": "0.054545454545454544",
+        "expected_value": "0.4",
+        "operator": "lte",
+        "result": "PASS",
+        "reason": "[PASSED] Debt-to-income ratio must be below 40%: 'input.existing_debt / input.annual_income' = 0.0545 lte 0.4"
+      },
+      {
+        "rule_id": "loan_amount_cap",
+        "stage_id": "rule_evaluation",
+        "field_path": "input.requested_amount / input.annual_income",
+        "evaluated_value": "0.21818181818181817",
+        "expected_value": "0.3",
+        "operator": "lte",
+        "result": "PASS",
+        "reason": "[PASSED] Loan amount cannot exceed 30% of annual income: 'input.requested_amount / input.annual_income' = 0.218 lte 0.3"
+      },
+      {
+        "rule_id": "high_value_flag",
+        "stage_id": "rule_evaluation",
+        "field_path": "input.requested_amount",
+        "evaluated_value": "12000",
+        "expected_value": "25000",
+        "operator": "lte",
+        "result": "PASS",
+        "reason": "[PASSED] Loans over $25,000 require manual review (auto-approve only up to $25k): 'input.requested_amount' = 12000 lte 25000"
+      }
+    ],
+    "generated_at": "2025-01-15T14:32:07.123456+00:00"
+  },
+
+  "error_message": null,
+  "created_at": "2025-01-15T14:32:06.001000+00:00",
+  "updated_at": "2025-01-15T14:32:07.140000+00:00",
+  "completed_at": "2025-01-15T14:32:07.140000+00:00",
+
+  "audit_trail": [
+    {
+      "_comment": "══════════════════════════════════════════════════════",
+      "_comment2": "AUDIT TRAIL — Immutable, append-only, sequence-ordered.",
+      "_comment3": "Read this from top to bottom to replay the entire",
+      "_comment4": "decision-making process step by step.",
+      "_comment5": "══════════════════════════════════════════════════════"
+    },
+
+    {
+      "id": "audit-0001",
+      "sequence_number": 1,
+      "event_type": "STATUS_TRANSITION",
+      "stage_id": null,
+      "rule_id": null,
+      "field_path": null,
+      "evaluated_value": null,
+      "expected_value": null,
+      "operator": null,
+      "result": "RUNNING",
+      "message": "Workflow execution started.",
+      "extra_metadata": null,
+      "created_at": "2025-01-15T14:32:06.010000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0002",
+      "sequence_number": 2,
+      "event_type": "EXECUTION_CREATED",
+      "stage_id": null,
+      "rule_id": null,
+      "result": null,
+      "message": "Execution created for workflow 'loan_approval_v1' (version=1.0.0)",
+      "extra_metadata": {
+        "workflow_name": "Personal Loan Approval",
+        "input_keys": ["applicant_id", "full_name", "age", "annual_income", "requested_amount", "employment_status", "existing_debt"]
+      },
+      "created_at": "2025-01-15T14:32:06.015000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0003",
+      "sequence_number": 3,
+      "event_type": "STAGE_STARTED",
+      "stage_id": "validate_input",
+      "result": null,
+      "message": "Stage 'validate_input' started (type=rule_evaluation)",
+      "created_at": "2025-01-15T14:32:06.020000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0004",
+      "sequence_number": 4,
+      "event_type": "RULE_EVALUATED",
+      "stage_id": "validate_input",
+      "rule_id": "age_eligibility",
+      "field_path": "input.age",
+      "evaluated_value": "28",
+      "expected_value": "18",
+      "operator": "gte",
+      "result": "PASS",
+      "message": "[PASSED] Applicant must be at least 18 years old: 'input.age' = 28 gte 18",
+      "extra_metadata": {
+        "severity": "mandatory",
+        "action": null,
+        "error": null
+      },
+      "created_at": "2025-01-15T14:32:06.025000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0005",
+      "sequence_number": 5,
+      "event_type": "RULE_EVALUATED",
+      "stage_id": "validate_input",
+      "rule_id": "minimum_income",
+      "field_path": "input.annual_income",
+      "evaluated_value": "55000",
+      "expected_value": "30000",
+      "operator": "gte",
+      "result": "PASS",
+      "message": "[PASSED] Annual income must meet minimum threshold of $30,000: 'input.annual_income' = 55000 gte 30000",
+      "extra_metadata": {
+        "severity": "mandatory",
+        "action": null,
+        "error": null
+      },
+      "created_at": "2025-01-15T14:32:06.027000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0006",
+      "sequence_number": 6,
+      "event_type": "RULE_EVALUATED",
+      "stage_id": "validate_input",
+      "rule_id": "employment_check",
+      "field_path": "input.employment_status",
+      "evaluated_value": "employed",
+      "expected_value": "['unemployed']",
+      "operator": "not_in",
+      "result": "PASS",
+      "message": "[PASSED] Unemployed applicants require manual review: 'input.employment_status' = 'employed' not_in ['unemployed']",
+      "extra_metadata": {
+        "severity": "soft",
+        "action": null,
+        "error": null
+      },
+      "created_at": "2025-01-15T14:32:06.029000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0007",
+      "sequence_number": 7,
+      "event_type": "STAGE_COMPLETED",
+      "stage_id": "validate_input",
+      "result": "PASS",
+      "message": "Stage 'validate_input' PASSED: all 3 rule(s) passed.",
+      "created_at": "2025-01-15T14:32:06.031000+00:00",
+      "duration_ms": 11.2
+    },
+
+    {
+      "id": "audit-0008",
+      "sequence_number": 8,
+      "event_type": "STAGE_STARTED",
+      "stage_id": "credit_score_lookup",
+      "result": null,
+      "message": "Stage 'credit_score_lookup' started (type=external_dependency, service=credit_bureau_api)",
+      "created_at": "2025-01-15T14:32:06.033000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "_comment": "──────────────────────────────────────────────────────",
+      "_comment2": "RETRY SCENARIO: First attempt failed (HTTP 500),",
+      "_comment3": "then succeeded on attempt 2. Both logged here.",
+      "_comment4": "──────────────────────────────────────────────────────"
+    },
+
+    {
+      "id": "audit-0009",
+      "sequence_number": 9,
+      "event_type": "EXT_DEP_ATTEMPT",
+      "stage_id": "credit_score_lookup",
+      "rule_id": null,
+      "result": "FAIL",
+      "message": "[credit_bureau_api] Attempt 1 failed: HTTP 500: Internal server error from credit_bureau_api (simulated)",
+      "extra_metadata": {
+        "service_id": "credit_bureau_api",
+        "attempt": 1,
+        "error": "HTTP 500: Internal server error from credit_bureau_api (simulated)",
+        "timestamp": 1705329126.045
+      },
+      "created_at": "2025-01-15T14:32:06.250000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0010",
+      "sequence_number": 10,
+      "event_type": "EXT_DEP_SUCCESS",
+      "stage_id": "credit_score_lookup",
+      "result": "PASS",
+      "message": "[credit_bureau_api] Succeeded after 2 attempt(s). Response: {'credit_score': 450, 'bureau': 'MockEquifax', 'pull_timestamp': 1705329126.65}",
+      "extra_metadata": {
+        "service_id": "credit_bureau_api",
+        "total_attempts": 2,
+        "response": {
+          "credit_score": 450,
+          "bureau": "MockEquifax",
+          "pull_timestamp": 1705329126.65,
+          "factors": [
+            "Collections present",
+            "Multiple delinquencies",
+            "High debt load"
+          ]
+        }
+      },
+      "created_at": "2025-01-15T14:32:06.660000+00:00",
+      "duration_ms": 627.0
+    },
+
+    {
+      "id": "audit-0011",
+      "sequence_number": 11,
+      "event_type": "STAGE_COMPLETED",
+      "stage_id": "credit_score_lookup",
+      "result": "PASS",
+      "message": "Stage 'credit_score_lookup' PASSED.",
+      "created_at": "2025-01-15T14:32:06.662000+00:00",
+      "duration_ms": 629.0
+    },
+
+    {
+      "id": "audit-0012",
+      "sequence_number": 12,
+      "event_type": "STAGE_STARTED",
+      "stage_id": "rule_evaluation",
+      "result": null,
+      "message": "Stage 'rule_evaluation' started (type=rule_evaluation)",
+      "created_at": "2025-01-15T14:32:06.664000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "_comment": "──────────────────────────────────────────────────────",
+      "_comment2": "THE DECISION POINT: Credit score = 450, threshold = 650.",
+      "_comment3": "450 is also below the on_fail_threshold (580), so this",
+      "_comment4": "is a HARD REJECT, not a soft manual-review routing.",
+      "_comment5": "──────────────────────────────────────────────────────"
+    },
+
+    {
+      "id": "audit-0013",
+      "sequence_number": 13,
+      "event_type": "RULE_EVALUATED",
+      "stage_id": "rule_evaluation",
+      "rule_id": "credit_score_minimum",
+      "field_path": "context.credit_score",
+      "evaluated_value": "450",
+      "expected_value": "650",
+      "operator": "gte",
+      "result": "FAIL",
+      "message": "[FAILED] Credit score must be at least 650 for auto-approval: 'context.credit_score' = 450 gte 650 → HARD REJECT (mandatory failure)",
+      "extra_metadata": {
+        "severity": "mandatory",
+        "action": null,
+        "error": null
+      },
+      "created_at": "2025-01-15T14:32:06.668000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0014",
+      "sequence_number": 14,
+      "event_type": "RULE_EVALUATED",
+      "stage_id": "rule_evaluation",
+      "rule_id": "debt_to_income_ratio",
+      "field_path": "input.existing_debt / input.annual_income",
+      "evaluated_value": "0.054545454545454544",
+      "expected_value": "0.4",
+      "operator": "lte",
+      "result": "PASS",
+      "message": "[PASSED] Debt-to-income ratio must be below 40%: 'input.existing_debt / input.annual_income' = 0.0545 lte 0.4",
+      "extra_metadata": {
+        "severity": "mandatory",
+        "action": null,
+        "error": null
+      },
+      "created_at": "2025-01-15T14:32:06.670000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0015",
+      "sequence_number": 15,
+      "event_type": "RULE_EVALUATED",
+      "stage_id": "rule_evaluation",
+      "rule_id": "loan_amount_cap",
+      "field_path": "input.requested_amount / input.annual_income",
+      "evaluated_value": "0.21818181818181817",
+      "expected_value": "0.3",
+      "operator": "lte",
+      "result": "PASS",
+      "message": "[PASSED] Loan amount cannot exceed 30% of annual income.",
+      "extra_metadata": {
+        "severity": "soft",
+        "action": null,
+        "error": null
+      },
+      "created_at": "2025-01-15T14:32:06.671000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0016",
+      "sequence_number": 16,
+      "event_type": "RULE_EVALUATED",
+      "stage_id": "rule_evaluation",
+      "rule_id": "high_value_flag",
+      "field_path": "input.requested_amount",
+      "evaluated_value": "12000",
+      "expected_value": "25000",
+      "operator": "lte",
+      "result": "PASS",
+      "message": "[PASSED] Loans over $25,000 require manual review (auto-approve only up to $25k): 'input.requested_amount' = 12000 lte 25000",
+      "extra_metadata": {
+        "severity": "soft",
+        "action": "force_manual_review",
+        "error": null
+      },
+      "created_at": "2025-01-15T14:32:06.672000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "id": "audit-0017",
+      "sequence_number": 17,
+      "event_type": "STAGE_FAILED",
+      "stage_id": "rule_evaluation",
+      "result": "FAIL",
+      "message": "Stage 'rule_evaluation' FAILED: mandatory rule(s) failed: ['credit_score_minimum']",
+      "created_at": "2025-01-15T14:32:06.674000+00:00",
+      "duration_ms": 10.4
+    },
+
+    {
+      "id": "audit-0018",
+      "sequence_number": 18,
+      "event_type": "STATUS_TRANSITION",
+      "stage_id": "rule_evaluation",
+      "result": "REJECTED",
+      "message": "Mandatory rule failure detected → REJECTED.",
+      "created_at": "2025-01-15T14:32:06.676000+00:00",
+      "duration_ms": null
+    },
+
+    {
+      "_comment": "──────────────────────────────────────────────────────",
+      "_comment2": "FINAL ENTRY — Human-readable explanation of the",
+      "_comment3": "complete decision. This is the single line a reviewer",
+      "_comment4": "or an automated system needs to act on the result.",
+      "_comment5": "──────────────────────────────────────────────────────"
+    },
+
+    {
+      "id": "audit-0019",
+      "sequence_number": 19,
+      "event_type": "EXECUTION_FINAL",
+      "result": "REJECTED",
+      "message": "Rejected: mandatory rule failure(s) in: ['credit_score_minimum'].",
+      "extra_metadata": {
+        "decision_trace": {
+          "final_status": "REJECTED",
+          "mandatory_failures": ["credit_score_minimum"],
+          "soft_failures": [],
+          "forced_reviews": [],
+          "stages_passed": 2,
+          "stages_failed": 1
+        }
+      },
+      "created_at": "2025-01-15T14:32:06.678000+00:00",
+      "duration_ms": null
+    }
+  ]
+}

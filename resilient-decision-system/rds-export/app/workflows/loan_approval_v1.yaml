@@ -1,0 +1,124 @@
+workflow_id: "loan_approval_v1"
+name: "Personal Loan Approval"
+version: "1.0.0"
+description: "End-to-end loan application processing workflow"
+
+input_schema:
+  type: object
+  required: [applicant_id, full_name, age, annual_income, requested_amount, employment_status]
+  properties:
+    applicant_id:
+      type: string
+    full_name:
+      type: string
+      minLength: 2
+    age:
+      type: integer
+      minimum: 18
+    annual_income:
+      type: number
+      minimum: 0
+    requested_amount:
+      type: number
+      minimum: 100
+    employment_status:
+      type: string
+      enum: [employed, self_employed, unemployed, retired]
+    existing_debt:
+      type: number
+      default: 0
+
+stages:
+  - stage_id: "validate_input"
+    type: rule_evaluation
+    name: "Basic Eligibility Checks"
+    on_failure: reject
+    rules:
+      - rule_id: "age_eligibility"
+        description: "Applicant must be at least 18 years old"
+        field: "input.age"
+        operator: gte
+        threshold: 18
+        severity: mandatory
+
+      - rule_id: "minimum_income"
+        description: "Annual income must meet minimum threshold of $30,000"
+        field: "input.annual_income"
+        operator: gte
+        threshold: 30000
+        severity: mandatory
+
+      - rule_id: "employment_check"
+        description: "Unemployed applicants require manual review"
+        field: "input.employment_status"
+        operator: not_in
+        threshold: ["unemployed"]
+        severity: soft
+
+  - stage_id: "credit_score_lookup"
+    type: external_dependency
+    name: "Credit Bureau API Call"
+    on_failure: reject
+    dependency:
+      service_id: "credit_bureau_api"
+      mock: true
+      mock_config:
+        failure_rate: 0.20
+        response_field: "credit_score"
+        response_range: [300, 850]
+        latency_ms: [80, 300]
+    retry_policy:
+      max_attempts: 3
+      backoff_strategy: exponential
+      base_delay_ms: 200
+      max_delay_ms: 5000
+      retryable_http_codes: [500, 502, 503, 504]
+    result_mapping:
+      credit_score: "context.credit_score"
+
+  - stage_id: "rule_evaluation"
+    type: rule_evaluation
+    name: "Credit and Risk Rules"
+    on_failure: reject
+    rules:
+      - rule_id: "credit_score_minimum"
+        description: "Credit score must be at least 650 for auto-approval"
+        field: "context.credit_score"
+        operator: gte
+        threshold: 650
+        severity: mandatory
+        on_fail_threshold: 580
+        on_fail_route: manual_review
+
+      - rule_id: "debt_to_income_ratio"
+        description: "Debt-to-income ratio must be below 40%"
+        field_expression: "input.existing_debt / input.annual_income"
+        operator: lte
+        threshold: 0.40
+        severity: mandatory
+
+      - rule_id: "loan_amount_cap"
+        description: "Loan amount cannot exceed 30% of annual income"
+        field_expression: "input.requested_amount / input.annual_income"
+        operator: lte
+        threshold: 0.30
+        severity: soft
+
+      - rule_id: "high_value_flag"
+        description: "Loans over $25,000 require manual review (auto-approve only up to $25k)"
+        field: "input.requested_amount"
+        operator: lte
+        threshold: 25000
+        severity: soft
+        action: force_manual_review
+
+decision_logic:
+  approved_if: all_mandatory_pass
+  manual_review_if: [any_soft_fail, any_force_manual_review]
+  rejected_if: [any_mandatory_fail]
+
+metadata:
+  owner: "lending_team"
+  review_queue: "credit_review_team"
+  sla_hours: 48
+  tags: [lending, consumer, automated]

@@ -1,0 +1,90 @@
+workflow_id: "employee_onboarding_v1"
+name: "Employee Onboarding Approval"
+version: "1.0.0"
+description: "Background check and clearance verification for new hires"
+
+input_schema:
+  type: object
+  required: [employee_id, full_name, department, role, clearance_level, background_check_consent]
+  properties:
+    employee_id:
+      type: string
+    full_name:
+      type: string
+    department:
+      type: string
+      enum: [engineering, hr, finance, legal, operations]
+    role:
+      type: string
+    clearance_level:
+      type: integer
+      minimum: 1
+      maximum: 5
+    background_check_consent:
+      type: boolean
+
+stages:
+  - stage_id: "consent_check"
+    type: rule_evaluation
+    name: "Background Check Consent Gate"
+    on_failure: reject
+    rules:
+      - rule_id: "consent_given"
+        description: "Employee must have consented to background check"
+        field: "input.background_check_consent"
+        operator: is_true
+        threshold: true
+        severity: mandatory
+
+  - stage_id: "background_check_api"
+    type: external_dependency
+    name: "Background Screening API"
+    on_failure: manual_review
+    dependency:
+      service_id: "background_check_api"
+      mock: true
+      mock_config:
+        failure_rate: 0.15
+        response_field: "check_status"
+        response_values: ["clear", "flagged", "pending"]
+        latency_ms: [200, 800]
+    retry_policy:
+      max_attempts: 3
+      backoff_strategy: exponential
+      base_delay_ms: 500
+      max_delay_ms: 10000
+      retryable_http_codes: [500, 502, 503, 504]
+    result_mapping:
+      check_status: "context.background_status"
+
+  - stage_id: "clearance_rules"
+    type: rule_evaluation
+    name: "Clearance Level and Department Rules"
+    on_failure: manual_review
+    rules:
+      - rule_id: "background_clear"
+        description: "Background check must return 'clear' status"
+        field: "context.background_status"
+        operator: equals
+        threshold: "clear"
+        severity: mandatory
+        on_fail_route: manual_review
+
+      - rule_id: "high_clearance_review"
+        description: "Clearance level 4 or above requires HR manual review"
+        field: "input.clearance_level"
+        operator: gte
+        threshold: 4
+        severity: soft
+        action: force_manual_review
+
+decision_logic:
+  approved_if: all_mandatory_pass
+  manual_review_if: [any_soft_fail, any_force_manual_review]
+  rejected_if: [any_mandatory_fail]
+
+metadata:
+  owner: "hr_team"
+  review_queue: "hr_review_team"
+  sla_hours: 72
+  tags: [hr, onboarding, compliance]
